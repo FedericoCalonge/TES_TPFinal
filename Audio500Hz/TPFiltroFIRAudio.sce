@@ -1,19 +1,3 @@
-function y = u(x)
-    y = (sign(x) + 1)/2
-endfunction
-
-function y = rect(x)
-    y = u(x + 1/2) - u(x - 1/2)
-endfunction
-
-function y = rampa(x)
-    y = x.*u(x)
-endfunction
-
-function y = sincPi(x)
-    y = sinc(x*%pi)
-endfunction
-
 function y = polyval(p, x)
     y = 0
     p = p(length(p):-1:1)
@@ -22,44 +6,61 @@ function y = polyval(p, x)
     end
 endfunction
 
-function y = polyvalNegativo(p, x)
+function y = negativePolyval(p, x)
     y = 0
     p = p(length(p):-1:1)
     for k = 1:length(p)
         y = y + p(k) * x.^(1 - k)
     end
 endfunction
-// TODO: Volver a A3760 B20 D444.8 E25 N600 f4304.8, separar el notch en 10Hz
-// TODO: Volver a A3760 B20 D444.8 E25 N600 f4304.8, restar 15 a todo
-A = 3760
-B = 20
-C = 1 / (2*B)
-D = 444.8
-E = 25
-F = 1 / (2*E)
-N = 300 // Maxima cantidad de terminos positivos de T.Fourier en tiempo discreto
+
+function g = getGain(x)
+    g = 1 / max(abs(x))
+endfunction
+
+function h = lowPassFilter(A, B, t)
+    h = 2*A*sincPi(2*A*t).*sincPi(2*B*t)
+endfunction
+
+function h = bandPassFilter(A, B, f0, t)
+    h = 2*lowPassFilter(A, B, t).*cos(2*%pi*f0*t)
+endfunction
+
 [x, fs, bits] = wavread('.\Audio500Hz\ParlaProfeTESundavCONtono500Hz_1erCuat2019.wav');
+A = 7390 // Ancho del filtro pasabanda
+B = 20
+D = 477.3 // Ancho del filtro pasabajos
+E = 20
+N = 700 // Maxima cantidad de terminos positivos de T.Fourier en tiempo discreto
 Ts = 1 / fs;
-f = 0:0.1:fs
 k = 0:2*N
-hc = 4*D*E*F*sincPi(2*D*(k - N)*Ts).*sincPi(2*E*(k - N)*Ts) + 8*A*B*C*sincPi(2*A*(k - N)*Ts).*sincPi(2*B*(k - N)*Ts).*cos(2*%pi*4304.8*(k - N)*Ts)
+
+// Se define el filtro notch de 500Hz compuesto por un filtro pasa bajos y un
+// filtro pasa banda.
+hc = lowPassFilter(D, E, (k - N)*Ts) + bandPassFilter(A, B, 7927.3, (k - N)*Ts)
+
+// Se grafica la respuesta en frecuencia del filtro hc
+f = 0:0.1:fs
 Z = exp(%i*2*%pi*f*Ts)
-Hz = polyvalNegativo(Ts*hc, Z)
+Hz = negativePolyval(Ts*hc, Z)
+figure(0)
+title('Transferencia del filtro notch')
 plot(f, abs(Hz), 'r')
 xgrid()
 
-// Se usa Hz para filtrar una señal de audio
-t = Ts:Ts:(Ts*length(x));
-y = filter(Ts*hc, 1, x)  //denominador=1.
+// Se usa hc para filtrar una señal de audio
+t = (1:length(x))*Ts;
+y = filter(Ts*hc, 1, x)  // denominador = 1 para que sea filtro FIR.
+
+// Se grafica la señal de entrada x
 figure(1)
-title('señal de entrada')
+title('Señal de entrada')
 plot(t, x)
+
+// Se grafica la señal filtrada y
 figure(2)
-title('señal de salida')
+title('Señal de salida')
 plot(t, y)
 
-wavwrite(y, fs, bits, '.\Audio500Hz\TPFiltroFIRAaudio500Hz_out.wav')
-
-t1 = Ts:Ts:0.3
-finishtone = cos(2*%pi*1000*t1).*u(0.1 + t1) + cos(2*%pi*3000*t1).*u(t1 - 0.1)
-playsnd(finishtone, fs, bits, '')
+wavwrite(y, fs, bits, 'TPFiltroFIRAaudio500Hz_out.wav')
+playsnd(y*getGain(y), fs, bits, '')
