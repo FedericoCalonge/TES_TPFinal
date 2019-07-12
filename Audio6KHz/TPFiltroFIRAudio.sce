@@ -1,0 +1,64 @@
+function y = u(x)
+    y = (sign(x) + 1)/2
+endfunction
+
+function y = rect(x)
+    y = u(x + 1/2) - u(x - 1/2)
+endfunction
+
+function y = rampa(x)
+    y = x.*u(x)
+endfunction
+
+function y = sincPi(x)
+    y = sinc(x*%pi)
+endfunction
+
+function y = polyval(p, x)
+    y = 0
+    p = p(length(p):-1:1)
+    for k = 1:length(p)
+        y = y + p(k) * x.^(k - 1)
+    end
+endfunction
+
+function y = polyvalNegativo(p, x)
+    y = 0
+    p = p(length(p):-1:1)
+    for k = 1:length(p)
+        y = y + p(k) * x.^(1 - k)
+    end
+endfunction
+
+A = 4500
+B = 500
+C = 1 / (2*B)
+N = 20 // Maxima cantidad de terminos positivos de T.Fourier en tiempo discreto
+[x, fs, bits] = wavread('.\Audio6KHz\GrabacioAudioProfeConTono1erCuat2019.wav');
+Ts = 1 / fs;
+f = 0:0.1:fs
+k = 0:2*N
+hc = 4*A*B*C*sincPi(2*A*(k - N)*Ts).*sincPi(2*B*(k - N)*Ts)
+Z = exp(%i*2*%pi*f*Ts)
+Hz = polyvalNegativo(Ts*hc, Z)
+plot(f, abs(Hz), 'r')
+xgrid()
+
+// Se usa Hz para filtrar una señal de audio
+t = Ts:Ts:(Ts*length(x));
+y = filter(Ts*hc, 1, x)  //denominador=1.
+figure(1)
+title('señal de entrada')
+plot(t, x)
+figure(2)
+title('señal de salida')
+plot(t, y)
+
+wavwrite(y, fs, bits, '.\Audio6KHz\TPFiltroFIRAaudio6KHz_out.wav')
+
+/* testPolyVal
+x = 0:0.1:3
+testpol = polyval([2 2 1], x)
+figure(1)
+plot(x, testpol)
+*/
