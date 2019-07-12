@@ -62,5 +62,5 @@ figure(2)
 title('Señal de salida')
 plot(t, y)
 
-wavwrite(y, fs, bits, 'TPFiltroFIRAaudio500Hz_out.wav')
+wavwrite(y, fs, bits, '.\Audio500Hz\TPFiltroFIRAaudio500Hz_out.wav')
 playsnd(y*getGain(y), fs, bits, '')
