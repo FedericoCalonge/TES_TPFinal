@@ -18,12 +18,36 @@ function g = getGain(x)
     g = 1 / max(abs(x))
 endfunction
 
+function y = sincPi(x)
+    y = sinc(x*%pi)
+endfunction
+
 function h = lowPassFilter(A, B, t)
     h = 2*A*sincPi(2*A*t).*sincPi(2*B*t)
 endfunction
 
 function h = bandPassFilter(A, B, f0, t)
     h = 2*lowPassFilter(A, B, t).*cos(2*%pi*f0*t)
+endfunction
+
+function y = filterFIR(VN, x) //Recibo 1 vector REAL (VN:VectorNumerador) y la señal de entrada (x).
+    //La salida de myFilter() es la señal x filtrada.
+    //Sacamos longitudes:   
+    LongNum = length(VN);    //Longitud del vector del NUMERADOR.
+    LongX = length(x);       //Longitud de nuestra función de entrada x.
+    x2 = [zeros(LongNum-1,1); x'];    //Usamos x2 como auxiliar. zeros(2,3) me devuelve una matriz de ceros de 2 filas x 3 columnas. x' es la traspuesta de x. 
+    //Y la ";" es para concatenar ambos vectores. Esto lo hacemos porque en el for se abajo (al sacar y[n]) se necesita que los dos vectores tengan el mismo tamaño;
+    //entonces agrandamos el tamaño de x rellenandolo con 0s.
+    
+    //Ahora hacemos un bucle for para obtener nuestra salida y[n]:
+    for n = LongNum:LongX+LongNum-1 //for basado en nuestra ecuacion H(z)=B(Z)/A(Z) --> ver help filter()
+    //Es un for que va de n=Maximo HASTA Maximo+Nx-1.
+        y(n) = ( (VN(LongNum:-1:1))*(x2(n-LongNum+1:n)) ); //Al hacer: 8:-1:4 (ejemplo) nos devuelve 8,7,6,5,4 (disminuimos el 8 en 1 hasta llegar al 4).
+    end
+
+    //Salida...    
+    y2 = y(LongNum:LongX+LongNum-1); //Nos sirve para eliminar los 0s.
+    y = y2'; //La trasponemos y obtenemos nuestra señal x ya filtrada = señal y.
 endfunction
 
 [x, fs, bits] = wavread('.\Audio200Hz\ParlaProfeTESundavCONtono200Hz_1erCuat2019.wav');
@@ -50,7 +74,7 @@ xgrid()
 
 // Se usa hc para filtrar una señal de audio
 t = (1:length(x))*Ts;
-y = filter(Ts*hc, 1, x)  // denominador = 1 para que sea filtro FIR.
+y = filterFIR(Ts*hc, x)  // denominador = 1 para que sea filtro FIR.
 
 // Se grafica la señal de entrada x
 figure(1)
